@@ -83,7 +83,7 @@ function Socket:_onSocketEnd()
 end
 
 function Socket:bind(ip, port)
-  uv.tcp_bind(self._handle, ip, tonumber(port))
+  return uv.tcp_bind(self._handle, ip, tonumber(port))
 end
 
 function Socket:address()
@@ -279,7 +279,7 @@ function Socket:listen(queueSize)
     uv.accept(self._handle, client)
     self:emit('connection', Socket:new({ handle = client }))
   end
-  uv.listen(self._handle, queueSize, onListen)
+  return uv.listen(self._handle, queueSize, onListen)
 end
 
 function Socket:getsockname()
@@ -310,6 +310,7 @@ end
 function Server:listen(port, ... --[[ ip, callback --]] )
   local args = {...}
   local ip, callback
+  local has_error, error_msg, error_code
 
   if not self._handle then
     self._handle = Socket:new({ handle = uv.new_tcp() })
@@ -326,13 +327,17 @@ function Server:listen(port, ... --[[ ip, callback --]] )
   ip = ip or '0.0.0.0'
 
   self._handle:bind(ip, port)
-  self._handle:listen()
+  has_error, error_msg, error_code = self._handle:listen()
   self._handle:on('connection', function(client)
     self:emit('connection', client)
   end)
 
   if callback then
     timer.setImmediate(callback)
+  end
+
+  if has_error == nil then
+    return has_error, error_msg, error_code
   end
 
   return self
